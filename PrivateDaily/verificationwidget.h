@@ -31,6 +31,8 @@ private slots:
 
 private:
     Ui::VerificationWidget *ui;
+
+    const char* _fillPassword = "fillPassword";
 };
 
 #endif // VERIFICATIONWIDGET_H

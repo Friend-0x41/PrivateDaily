@@ -28,6 +28,11 @@ VerificationWidget::~VerificationWidget()
 void VerificationWidget::on_enterBtn_clicked()
 {
     password = ui->lineEdit->text();
+    if(password.length() < 16)
+    {
+        int sub = 16 - password.length();
+        password += QString(_fillPassword + 12 - sub);
+    }
     this->destroy();
     MainWindow* w = new MainWindow;
     w->show();
@@ -37,9 +42,9 @@ void VerificationWidget::on_lineEdit_textChanged(const QString &arg1)
 {
     if(arg1.isEmpty())
     {
-        ui->infoLabel->setText("Please input password with 16 character");
+        ui->infoLabel->setText("Please input password with 4 to 16 character");
     }
-    if(arg1.length() == 16)
+    if(arg1.length() >= 4)
     {
         ui->enterBtn->setEnabled(true);
     }
