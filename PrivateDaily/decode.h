@@ -1,15 +1,15 @@
 #ifndef DECODE_H
 #define DECODE_H
 
-#include <vector>
+#include <QByteArray>
 
 class Decode
 {
 public:
 
-    Decode(const char* src, int length);
+    Decode(const QByteArray& src);
 
-    const std::vector<char>& decodeData(unsigned char* key);
+    QByteArray& decodeData(unsigned char* key);
 
 private:
 
@@ -17,11 +17,9 @@ private:
 
 private:
 
-    const char* _src = nullptr;
+    QByteArray _src;
 
-    int _length = 0;
-
-    std::vector<char> _des;
+    QByteArray _des;
 };
 
 #endif // DECODE_H

@@ -1,15 +1,15 @@
 #ifndef ENCRYPTION_H
 #define ENCRYPTION_H
 
-#include <vector>
+#include <QByteArray>
 
 class Encryption
 {
 public:
 
-    Encryption(const char* src,int length);
+    Encryption(const QByteArray& src);
 
-    const std::vector<char>& desData(unsigned char* key);
+    QByteArray& desData(unsigned char* key);
 
 private :
 
@@ -17,11 +17,9 @@ private :
 
 private:
 
-    const char* _src = nullptr;
+    QByteArray _src = nullptr;
 
-    int _length = 0;
-
-    std::vector<char> _des;
+    QByteArray _des;
 };
 
 #endif // ENCRYPTION_H

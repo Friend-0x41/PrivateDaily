@@ -2,7 +2,8 @@
 #include "decode.h"
 #include "encryption.h"
 #include <iostream>
-#include <fstream>
+#include <QFile>
+#include <QByteArray>
 
 Config::Config()
 {
@@ -10,28 +11,18 @@ Config::Config()
 }
 ConfigData Config::loadConfig(bool& b)
 {
-    std::ifstream is;
-    is.open(_configFileName.toStdString(),std::ios_base::binary | std::ios_base::in);
-    if(!is.is_open())
+    QFile inputFile(_configFileName);
+    if(!inputFile.open(QIODevice::ReadOnly))
     {
         b = false;
         return ConfigData();
     }
-    is.seekg(0,std::ios::end);
-    int length = is.tellg();
-    is.seekg(0,std::ios::beg);
-    char* data = new char[length];
-    is.read(data,length);
-    is.close();
-    Decode decode(data,length + 1);
+    QByteArray bytes = inputFile.readAll();
+    inputFile.close();
+    Decode decode(bytes);
     char key[] = "1234567812345678";
-    const std::vector<char>& cv = decode.decodeData((unsigned char *)key);
-    for(int i = 0;i < length;++i)
-    {
-        data[i] = cv[i];
-    }
-    data[length] = 0;
-    QStringList l = QString(data).split(_splitChar);
+    QByteArray& cv = decode.decodeData((unsigned char *)key);
+    QStringList l = QString(cv).split(_splitChar);
     ConfigData configData;
     configData.currentIndex = l[0].toInt();
     for(int i = 1;i < l.count(); ++i)
@@ -39,7 +30,6 @@ ConfigData Config::loadConfig(bool& b)
         configData.openedFile.append(l[i]);
     }
     b = true;
-    delete data;
     return configData;
 }
 
@@ -50,19 +40,16 @@ bool Config::SaveConfig(ConfigData configData)
     {
         s += _splitChar + configData.openedFile[i];
     }
-    int length = strlen(s.toStdString().c_str());
-    Encryption e(s.toStdString().c_str(),length);
+    QByteArray bytes(s.toStdString().c_str());
+    Encryption e(bytes);
     char key[] = "1234567812345678";
-    const std::vector<char>& vc = e.desData((unsigned char *)key);
-    char* data = new char[vc.size()];
-    for(int i = 0;i < vc.size();++i)
+    QByteArray& vc = e.desData((unsigned char *)key);
+    QFile outputFile(_configFileName);
+    if(!outputFile.open(QIODevice::WriteOnly))
     {
-        data[i] = vc[i];
+        return false;
     }
-    std::ofstream os;
-    os.open(_configFileName.toStdString(),std::ios_base::binary | std::ios_base::out);
-    os.write(data,vc.size());
-    //os.write(s.toStdString().c_str(),length);
-    delete data;
-    os.close();
+    outputFile.write(vc);
+    outputFile.close();
+    return true;
 }

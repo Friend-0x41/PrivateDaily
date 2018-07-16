@@ -20,10 +20,8 @@
 #include <QStackedWidget>
 #include <QDockWidget>
 #include <QListWidget>
-#include <fstream>
 #include "decode.h"
 #include "encryption.h"
-#include <vector>
 #include <QTextCodec>
 #include "config.h"
 #include <QDate>
@@ -33,6 +31,8 @@
 #include <QApplication>
 #include <verificationwidget.h>
 #include <QMessageBox>
+#include <QByteArray>
+#include <QFile>
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -203,25 +203,19 @@ void MainWindow::on_openFileAction_triggered()
         return;
     }
     _openedFilePaths.append(path);
-    std::ifstream is;
-    is.open(path.toStdString(),std::ios_base::binary | std::ios_base::in);
-    is.seekg(0,std::ios::end);
-    int length = is.tellg();
-    is.seekg(0,std::ios::beg);
-    char* data = new char[length];
-    is.read(data,length);
-    is.close();
-    Decode decode(data,length);
-    const char* key = VerificationWidget::getPassword().toStdString().c_str();
-    const std::vector<char>& cv = decode.decodeData((unsigned char*)key);
-    for(int i = 0;i < length;++i)
+    QFile inputFile(path);
+    if(!inputFile.open(QIODevice::ReadOnly))
     {
-        data[i] = cv[i];
+        return;
     }
+    QByteArray bytes = inputFile.readAll();
+    inputFile.close();
+    Decode decode(bytes);
+    const char* key = VerificationWidget::getPassword().toStdString().c_str();
+    QByteArray& cv = decode.decodeData((unsigned char*)key);
     QStringList l = path.split('/');
     path = l[l.length() - 1];
-    AddEditor(path,data);
-    delete data;
+    AddEditor(path,cv.data());
 }
 
 void MainWindow::AddEditor(const QString& fileName,const QString& text)
@@ -238,7 +232,7 @@ void MainWindow::AddEditor(const QString& fileName,const QString& text)
 
 void MainWindow::on_saveFileAction_triggered()
 {
-    QString data = _openedFiles[_currendFileIndex].editor->toPlainText();
+    QString data = _openedFiles[_currendFileIndex].editor->toHtml();
     if(data.isEmpty())
     {
         statusBar()->showMessage("No data");
@@ -264,20 +258,17 @@ void MainWindow::on_saveFileAction_triggered()
     {
         fileName = path + "/" + _openedFiles[_currendFileIndex].listItem->text();
     }
-    std::ofstream os;
-    os.open(fileName.toStdString(),std::ios_base::binary | std::ios_base::out);
-    int length = strlen(data.toStdString().c_str());
-    Encryption e(data.toStdString().c_str(),length);
-    const char* key = VerificationWidget::getPassword().toStdString().c_str();
-    const std::vector<char>& vc = e.desData((unsigned char*)key);
-    char* cd = new char[vc.size()];
-    for(int i = 0;i < vc.size();++i)
+    QFile outputFile(fileName);
+    if(!outputFile.open(QIODevice::WriteOnly))
     {
-        cd[i] = vc[i];
+        return;
     }
-    os.write(cd,vc.size());
-    delete cd;
-    os.close();
+    QByteArray bytes(data.toStdString().c_str());
+    Encryption e(bytes);
+    const char* key = VerificationWidget::getPassword().toStdString().c_str();
+    QByteArray& vc = e.desData((unsigned char*)key);
+    outputFile.write(vc);
+    outputFile.close();
     statusBar()->showMessage("Save success");
     QStringList l = fileName.split('/');
     _openedFiles[_currendFileIndex].listItem->setText(l[l.count() - 1]);
@@ -380,29 +371,19 @@ bool MainWindow::LoadConfig()
     int count = 0;
     for(int i = 0;i < data.openedFile.count();++i)
     {
-        std::ifstream is;
-        is.open(data.openedFile[i].toStdString(),std::ios_base::binary | std::ios_base::in);
-        if(!is.is_open())
+        QFile inputFile(data.openedFile[i]);
+        if(!inputFile.open(QIODevice::ReadOnly))
         {
             continue;
         }
-        is.seekg(0,std::ios::end);
-        int length = is.tellg();
-        is.seekg(0,std::ios::beg);
-        char* cdata = new char[length];
-        is.read(cdata,length);
-        is.close();
-        Decode decode(cdata,length);
+        QByteArray bytes = inputFile.readAll();
+        inputFile.close();
+        Decode decode(bytes);
         const char* s = VerificationWidget::getPassword().toStdString().c_str();
-        const std::vector<char>& cv = decode.decodeData((unsigned char*)s);
-        for(int i = 0;i < length;++i)
-        {
-            cdata[i] = cv[i];
-        }
+        QByteArray& cv = decode.decodeData((unsigned char*)s);
         QStringList l = data.openedFile[i].split('/');
         QString path = l[l.length() - 1];
-        AddEditor(path,cdata);
-        delete cdata;
+        AddEditor(path,cv.data());
         _openedFilePaths.append(data.openedFile[i]);
         ++count;
     }
